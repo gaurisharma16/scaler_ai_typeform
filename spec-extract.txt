@@ -1,0 +1,289 @@
+pages 9
+meta {'/Producer': 'WeasyPrint 70.0', '/Title': 'Typeform Clone — Design Reference & Architecture Spec'}
+
+===== PAGE 1 =====
+Typeform Clone — Design Reference
+& Architecture Spec
+One-file reference: visual mockups + full technical spec + a ready prompt for
+another AI coding assistant.
+Visual mockups
+1. DASHBOARD — "YOUR FORMS"
+2. BUILDER — CONTENT TAB (QUESTION LIST / EDITOR / LIVE PREVIEW)▣Typeform JS
+Your forms +Create form
+Customer
+feedback
+Published128
+responsesEvent RSVP
+Published42
+responses+
+Blank form
+←Customer
+feedbackPreview Publish
+QUESTIONS
+1. Welcome screen
+2. Your nameMULTIPLE CHOICE
+3 →
+===== PAGE 2 =====
+3. WORKFLOW TAB — LOGIC CANVAS (DRAG-AND-DROP NODES, DYNAMIC
+ARROWS)
+4. RESPONDENT FLOW — ONE QUESTION AT A TIME (PUBLIC, NO AUTH)3. Rate your
+experience
+4. How can we
+improve?
++Add questionRate your
+experience with
+us
+Description (optional)
+Excellent ⋮⋮
+Good ⋮⋮
+◯RequiredRate your experience
+with us
+A  Excellent
+B  Good
+OK ✓
+Content Workflow ConnectShare
+Logic Scoring T agging
+1☰
+Contact info↳
+2★
+Rate your
+experience↳3⚑
+Thank you screen
+✥ Drag cards freely —
+arrows redraw live 
+42%
+===== PAGE 3 =====
+5. RESULTS — RESPONSES TABLE + SUMMARY
+1. Visual system (must match Typeform)
+Token Value Where
+#191919 (near-black)3 →
+What's the best way to reach
+you? *
+Type your email here...
+OK press Enter ↵▲
+▼
+←Customer feedback SummaryResponses
+Responses
+128Completion rate
+76%Avg. time
+1m 42s
+Submitted Email Rating
+Sep 24, 4:12 PM jane@acme.com ★★★★★ View →
+Sep 24, 2:03 PM leo@studio.io ★★★★☆ View →
+Sep 23, 9:47 AM priya@getform.co ★★★☆☆ View →
+===== PAGE 4 =====
+App chrome
+bgT op nav, respondent full-screen
+background
+Canvas bg #F5F3EF (warm off-white) Builder background, dashboard
+Card/
+surface bg#FFFFFF Cards, panels, inputs
+Accent#FF6B5E (coral, per-form
+configurable)Primary buttons, active states,
+progress bar
+Border #E4E1D8 Card/input borders
+Muted text #8A877D Helper text, meta
+FontInter / system sans — 500 weight
+headings, 400 bodyEverywhere
+Radius 6–10pxButtons/inputs 6px, cards 10–
+12px
+Respondent flow  is dark ( #191919) full-bleed, one question centered
+left-aligned, big (24–28px) question text, thin progress bar top, "OK ↵"
+button in accent color, up/down chevrons bottom-right for prev/next,
+question number + arrow icon top-left. Transitions: 250–350ms
+slide+fade between questions (framer-motion AnimatePresence ).
+Builder  is a 3-pane layout: left = ordered question list (drag handles,
+active question highlighted with accent left-border), center = question
+editor (type label, title input, description, type-specific options, required
+toggle), right = live preview rendered as a miniature version of the actual
+respondent screen (same dark theme, scaled down).
+Dashboard  is light canvas, card grid of forms (thumbnail, title, status
+pill, response count), a "Create form" primary button top-right.
+Workflow / Logic canvas  (separate tab next to the builder — confirmed
+from your screen recording): a free-form node canvas, not a list. Each
+question renders as a small draggable card (number badge + type icon +
+title) positioned anywhere on a dotted-grid canvas. Cards connect via
+curved bezier arrows drawn from a small dark circular connector handle
+on one card to the next, and the arrows redraw live as cards are dragged.
+A left rail below the canvas holds "Pull data in", the right sidebar holds
+===== PAGE 5 =====
+Actions (Automations / Connect / Contacts). Sub-tabs above the canvas:
+Logic, Scoring, T agging, Outcome quiz.
+Build the Workflow canvas with React Flow  (@xyflow/react ) rather than hand-
+rolled SVG + drag math — it natively gives draggable nodes, animated bezier
+edges that reroute on drag, a dot-grid background, minimap, and zoom/pan. Each
+question = one React Flow node; the default linear sequence = one edge per
+consecutive pair; a branching rule (bonus) adds a second edge with a condition
+label.
+2. Tech stack
+Frontend : Next.js 14 (App Router) + TypeScript, T ailwind CSS, framer-
+motion for transitions, @dnd-kit/core  for drag-and-drop reordering, 
+@xyflow/react  for the Workflow canvas, react-hook-form  + zod for
+validation.
+Backend : FastAPI (Python), SQLAlchemy ORM, Pydantic schemas,
+Alembic for migrations (optional, nice for the DB-design grade).
+Database : SQLite for dev (per assignment); schema should be ORM-
+portable to Postgres.
+Auth : none — single hardcoded "default creator" (per assignment's
+simplification note). All /forms endpoints operate implicitly as that
+creator.
+3. Database schema
+creators
+  id            INTEGER PK
+  name          TEXT
+  email         TEXT
+forms
+  id            INTEGER PK
+  creator_id    FK -> creators.id
+  title         TEXT
+  status        TEXT    -- 'draft' | 'published'
+  slug          TEXT UNIQUE   -- public share link /f/{slug}
+  theme_color   TEXT DEFAULT '#FF6B5E'• 
+• 
+• 
+• 
+===== PAGE 6 =====
+  welcome_title TEXT NULL
+  welcome_desc  TEXT NULL
+  thankyou_title TEXT DEFAULT 'Thanks for completing this form!'
+  thankyou_desc  TEXT NULL
+  created_at    DATETIME
+  updated_at    DATETIME
+questions
+  id            INTEGER PK
+  form_id       FK -> forms.id
+  type          TEXT   -- short_text | long_text | multiple_choice | dropdown
+                        -- | email | number | yes_no | rating
+  title         TEXT
+  description   TEXT NULL
+  required      BOOLEAN DEFAULT false
+  order_index   INTEGER          -- drives default linear order
+  canvas_x      FLOAT DEFAULT NULL   -- node position on the Workflow canvas
+  canvas_y      FLOAT DEFAULT NULL
+  settings_json TEXT             -- type-specific: {options:[...]} for choice/
+                                  -- dropdown, {max: 5} for rating, etc.
+logic_rules                       -- edges on the Workflow canvas
+  id            INTEGER PK
+  form_id       FK -> forms.id
+  from_question_id  FK -> questions.id
+  to_question_id    FK -> questions.id
+  condition_json TEXT NULL        -- null = default/always edge;
+                                   -- {op, value} = conditional branch (bonus)
+responses
+  id            INTEGER PK
+  form_id       FK -> forms.id
+  started_at    DATETIME
+  completed_at  DATETIME NULL    -- null = partial (bonus: completion rate)
+  respondent_meta TEXT NULL      -- optional JSON (user agent, etc.)
+answers
+  id            INTEGER PK
+  response_id   FK -> responses.id
+  question_id   FK -> questions.id
+  value_json    TEXT             -- normalized: string, number, or array
+Relationships: creators 1—N forms , forms 1—N questions , forms 1—N
+responses , responses 1—N answers , questions 1—N answers . 
+answers.value_json  keeps one flexible answer shape instead of a
+column per question type, which is what lets the summary-stats endpoint
+work generically across types.
+===== PAGE 7 =====
+4. API design (FastAPI)
+Creator/builder side (implicit default creator, no auth header needed)
+GET    /api/forms                        list forms + status + response_count
+POST   /api/forms                        create form (title)
+GET    /api/forms/{id}                   full form + questions
+PATCH  /api/forms/{id}                   rename / theme / welcome / thank-you text
+POST   /api/forms/{id}/duplicate         clone form + its questions
+DELETE /api/forms/{id}
+POST   /api/forms/{id}/publish
+POST   /api/forms/{id}/unpublish
+POST   /api/forms/{id}/questions         create question
+PATCH  /api/questions/{id}               edit question
+DELETE /api/questions/{id}
+POST   /api/forms/{id}/questions/reorder  body: [question_id,...] in new order
+PATCH  /api/questions/{id}/position       body: {canvas_x, canvas_y} (Workflow drag)
+GET    /api/forms/{id}/logic              list edges for the Workflow canvas
+POST   /api/forms/{id}/logic              create an edge (from_question_id, to_question_id, condition)
+DELETE /api/logic/{id}
+GET    /api/forms/{id}/responses         list responses (table view)
+GET    /api/responses/{id}               single response w/ answers
+GET    /api/forms/{id}/summary           per-question aggregates
+GET    /api/forms/{id}/responses/export  CSV (bonus)
+Public respondent side (no auth, slug-based)
+GET    /api/public/forms/{slug}          published form + ordered questions
+POST   /api/public/forms/{slug}/responses          start a response -> response_id
+PATCH  /api/public/responses/{response_id}/answers  upsert one answer per question
+                                                      (server validates per type)
+POST   /api/public/responses/{response_id}/complete  mark completed_at
+Splitting "start response" from "submit answer" is what enables the
+bonus partial-response tracking: a response row exists as soon as the
+respondent lands on question 1, updates as they go, and completed_at
+stays null if they drop off.
+Validation lives in Pydantic schemas: required  fields reject empty values,
+email type validates format, number type validates numeric + optional
+===== PAGE 8 =====
+min/max, multiple_choice /dropdown  validate the answer is one of 
+settings_json.options .
+5. Frontend routes
+/                          -> redirect to /forms
+/forms                     dashboard (list, create, duplicate, delete)
+/forms/[id]/edit           builder — Content tab (3-pane: list / editor / preview)
+                            and Workflow tab (React Flow logic canvas)
+/forms/[id]/results        responses table + per-question summary
+/forms/[id]/results/[responseId]   single response detail
+/f/[slug]                  public respondent flow (one-question-at-a-time)
+/f/[slug]/thank-you        thank-you screen
+6. Seed data
+Seed 2 published forms with mixed question types (short text, email,
+multiple choice, rating, yes/no at minimum) and 10–20 responses each
+with varied answers, plus 1 draft form. Required by the assignment so the
+app is demo-ready without manual setup.
+7. Prompt to paste into the other AI
+Build a Typeform clone as described below. Match Typeform's actual visual
+design closely: near-black (#191919) chrome and respondent screens,
+warm off-white (#F5F3EF) builder/dashboard canvas, white cards, coral
+accent (#FF6B5E, per-form configurable), Inter font, 6-10px radii,
+generous whitespace, smooth 250-350ms transitions between respondent
+questions using framer-motion.
+Stack: Next.js 14 (App Router, TypeScript, Tailwind, framer-motion,
+@dnd-kit/core, @xyflow/react for the workflow canvas, react-hook-form +
+zod) frontend; FastAPI + SQLAlchemy + SQLite backend.
+Implement exactly this schema: [paste section 3]
+Implement exactly this API: [paste section 4]
+Implement exactly these frontend routes: [paste section 5]
+===== PAGE 9 =====
+Core features:
+1. Form builder: 3-pane layout (question list w/ drag-and-drop reorder,
+   center editor for the active question, right live preview styled like
+   the real respondent screen). Question types: short text, long text,
+   multiple choice, dropdown, email, number, yes/no, rating. Each
+   question has required toggle + optional description.
+2. Form management: list with status + response count, create/rename/
+   duplicate/delete, publish/unpublish generates a public /f/{slug} link.
+2b. Workflow tab: a React Flow canvas showing each question as a
+   draggable card (number badge, type icon, title) connected by curved
+   bezier arrows that reroute live as cards are dragged; drag position
+   persists via PATCH /questions/{id}/position; default edges follow
+   question order, editable via the logic_rules table (basic conditional
+   branching is a bonus, not required to pass).
+3. Respondent flow: full-screen, one question at a time, dark theme,
+   keyboard nav (Enter to advance, up/down arrows for prev/next), thin
+   progress bar, client + server validation, submit -> thank-you screen,
+   no auth required.
+4. Results: table of responses per form, single-response detail view,
+   per-question summary stats (counts for choice-type questions, etc.),
+   CSV export (bonus).
+5. Seed the DB with 2 published forms (mixed question types) with 10-20
+   responses each, plus 1 draft form.
+Placeholders only (do not build): logic branching beyond basic, payment/
+file-upload question types, integrations, team collaboration.
+Deliver as frontend/ and backend/ folders with a README covering setup,
+architecture, schema, and API overview.
+8. Notes on the uploaded project
+Your existing typeform-clone  folder already has the right shape
+(backend/app/{models,schemas,routers,seed}.py , frontend/  Next.js
+app) — the gap versus this spec is mainly visual fidelity (respondent-flow
+dark theme + transitions, builder's 3-pane live preview, the Workflow
+logic canvas) and a few schema/endpoint gaps (partial-response tracking,
+per-question summary, duplicate/reorder/position/logic endpoints). Hand
+the other AI this file plus your zipped repo and ask it to bring the existing
+code in line with sections 1–7 rather than starting from scratch.

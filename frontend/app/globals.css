@@ -1,0 +1,27 @@
+@import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
+
+:root {
+  --tf-ink: #191919;
+  --tf-canvas: #f5f3ef;
+  --tf-card: #ffffff;
+  --tf-accent: #ff6b5e;
+  --tf-border: #e4e1d8;
+  --tf-muted: #8a877d;
+}
+
+@theme inline {
+  --color-background: var(--tf-canvas);
+  --color-foreground: var(--tf-ink);
+  --font-sans: var(--font-inter), Inter, system-ui, sans-serif;
+}
+
+html,
+body {
+  background: var(--tf-canvas);
+  color: var(--tf-ink);
+}
+
+* {
+  scrollbar-width: thin;
+}
