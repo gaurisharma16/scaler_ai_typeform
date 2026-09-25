@@ -74,8 +74,8 @@ export default function FormsDashboard() {
       setCreateOpen(false);
       setNewTitle("");
       router.push(`/forms/${form.id}/edit`);
-    } catch {
-      showToast("Could not create form", "error");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Could not create form", "error");
     }
   }
 
