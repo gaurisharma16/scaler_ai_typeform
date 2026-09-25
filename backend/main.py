@@ -5,8 +5,8 @@ from app.database import Base, ensure_schema_compatibility, engine
 from app.routers import forms, logic, public, questions, responses
 from app.seed import seed
 
-ensure_schema_compatibility()
 Base.metadata.create_all(bind=engine)
+ensure_schema_compatibility()
 seed()
 
 app = FastAPI(title="Typeform Clone API")
