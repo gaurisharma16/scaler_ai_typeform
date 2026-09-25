@@ -13,7 +13,12 @@ async function forward(request: NextRequest, context: { params: Promise<{ path: 
 
   const body = request.method === "GET" || request.method === "HEAD" ? undefined : await request.arrayBuffer();
   const response = await fetch(target, { method: request.method, headers, body, cache: "no-store" });
-  return new NextResponse(response.body, { status: response.status, headers: response.headers });
+  const responseHeaders = new Headers(response.headers);
+  responseHeaders.delete("connection");
+  responseHeaders.delete("content-encoding");
+  responseHeaders.delete("content-length");
+  responseHeaders.delete("transfer-encoding");
+  return new NextResponse(response.body, { status: response.status, headers: responseHeaders });
 }
 
 export const GET = forward;
